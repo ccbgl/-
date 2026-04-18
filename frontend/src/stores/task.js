@@ -1,113 +1,82 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { api } from '@/api/request'
-import { ElMessage } from 'element-plus'
+import request from '@/api/request'
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref([])
-  const plans = ref([])
-  const executions = ref([])
   const loading = ref(false)
+  const error = ref(null)
 
   // 获取任务列表
-  const fetchTasks = async (params = {}) => {
+  const fetchTasks = async () => {
     loading.value = true
+    error.value = null
     try {
-      const res = await api.get('/tasks', { params })
-      tasks.value = res.items || res
-      return tasks.value
-    } catch (error) {
-      ElMessage.error('获取任务列表失败')
-      return []
+      const response = await request.get('/api/v1/tasks/')
+      tasks.value = response.data || []
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to fetch tasks:', err)
+      tasks.value = []
     } finally {
       loading.value = false
     }
   }
 
   // 创建任务
-  const createTask = async (data) => {
+  const createTask = async (formData) => {
+    loading.value = true
+    error.value = null
     try {
-      const res = await api.post('/tasks', {
-        ...data,
-        repo_url: data.repo_url || import.meta.env.VITE_APP_REPO_URL
-      })
-      ElMessage.success('任务创建成功')
-      return res
-    } catch (error) {
-      ElMessage.error(error.message || '创建失败')
-      throw error
+      const response = await request.post('/api/v1/tasks/', formData)
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to create task:', err)
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
-  // 获取任务下的计划
-  const fetchPlans = async (taskId) => {
+  // 获取单个任务
+  const fetchTask = async (id) => {
+    loading.value = true
+    error.value = null
     try {
-      const res = await api.get(`/tasks/${taskId}/plans`)
-      plans.value = res
-      return res
-    } catch (error) {
-      ElMessage.error('获取计划列表失败')
-      return []
+      const response = await request.get(`/api/v1/tasks/${id}/`)
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to fetch task:', err)
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
-  // 创建计划
-  const createPlan = async (taskId, data) => {
+  // 删除任务
+  const deleteTask = async (id) => {
+    loading.value = true
+    error.value = null
     try {
-      const res = await api.post(`/tasks/${taskId}/plans`, data)
-      ElMessage.success('计划创建成功')
-      return res
-    } catch (error) {
-      ElMessage.error(error.message || '创建失败')
-      throw error
-    }
-  }
-
-  // 触发执行
-  const runPlan = async (planId, type = 'full') => {
-    try {
-      const res = await api.post(`/plans/${planId}/run`, { type })
-      ElMessage.success('任务已加入执行队列')
-      return res
-    } catch (error) {
-      ElMessage.error(error.message || '触发执行失败')
-      throw error
-    }
-  }
-
-  // 获取执行记录
-  const fetchExecutions = async (planId) => {
-    try {
-      const res = await api.get(`/plans/${planId}/executions`)
-      executions.value = res
-      return res
-    } catch (error) {
-      ElMessage.error('获取执行记录失败')
-      return []
-    }
-  }
-
-  // 获取报告
-  const fetchReport = async (execId) => {
-    try {
-      return await api.get(`/executions/${execId}/report`)
-    } catch (error) {
-      ElMessage.error('获取报告失败')
-      throw error
+      await request.delete(`/api/v1/tasks/${id}/`)
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to delete task:', err)
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
   return {
     tasks,
-    plans,
-    executions,
     loading,
+    error,
     fetchTasks,
     createTask,
-    fetchPlans,
-    createPlan,
-    runPlan,
-    fetchExecutions,
-    fetchReport
+    fetchTask,
+    deleteTask
   }
 })

@@ -1,80 +1,116 @@
 <template>
-  <div class="dashboard-container">
-    <!-- 顶部导航栏 -->
-    <el-header class="dashboard-header">
+  <div class="dashboard">
+    <!-- 顶部导航 -->
+    <el-header class="header">
       <div class="header-left">
-        <h2>🚀 FastAPI 自动化测试平台</h2>
+        <el-icon :size="24" color="#409eff"><Monitor /></el-icon>
+        <span class="title">自动化测试平台</span>
       </div>
       <div class="header-right">
-        <el-dropdown @command="handleCommand">
+        <el-dropdown>
           <span class="user-info">
-            <el-avatar :size="32" icon="User" />
-            <span class="username">{{ authStore.username || '用户' }}</span>
+            <el-avatar :size="32" :icon="UserFilled" />
+            <span>{{ auth.user?.username }}</span>
+            <el-tag v-if="auth.isAdmin" size="small" type="warning" effect="plain">Admin</el-tag>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item @click="auth.logout(); $router.push('/login')">
+                <el-icon><SwitchButton /></el-icon> 退出登录
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
     </el-header>
 
-    <!-- 主要内容区域 -->
-    <el-main class="dashboard-main">
-      <div class="content-wrapper">
-        <!-- 操作栏 -->
-        <div class="action-bar">
-          <el-button type="primary" @click="dialogVisible = true">
-            <el-icon><Plus /></el-icon> 新建任务
-          </el-button>
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索任务名称..."
-            style="width: 240px"
-            clearable
-            prefix-icon="Search"
-          />
-        </div>
+    <!-- 主体内容 -->
+    <el-main class="main">
+      <div class="page-header">
+        <h2>📦 测试任务管理</h2>
+        <el-button type="primary" @click="showCreateDialog">
+          <el-icon><Plus /></el-icon> 新建任务
+        </el-button>
+      </div>
 
-        <!-- 任务列表 -->
-        <el-table :data="filteredTasks" style="width: 100%" v-loading="loading">
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="name" label="任务名称" min-width="200" />
-          <el-table-column prop="repo_url" label="仓库地址" min-width="250" show-overflow-tooltip />
-          <el-table-column prop="branch" label="分支" width="120" />
-          <el-table-column prop="created_at" label="创建时间" width="180" />
-          <el-table-column label="操作" width="200" fixed="right">
-            <template #default="scope">
-              <el-button link type="primary" @click="viewTask(scope.row)">
-                查看详情
-              </el-button>
-              <el-button link type="danger" @click="deleteTask(scope.row.id)">
-                删除
+      <!-- 任务列表 -->
+      <LoadingSpinner :loading="taskStore.loading">
+        <el-table
+          :data="taskStore.tasks"
+          style="width: 100%"
+          @row-click="goToTask"
+          row-key="id"
+          border
+          stripe
+        >
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column prop="name" label="任务名称" min-width="180">
+            <template #default="{ row }">
+              <el-link type="primary" :underline="false">{{ row.name }}</el-link>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="repo_url" label="仓库地址" min-width="250" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-link :href="row.repo_url" target="_blank" type="info" :underline="false">
+                <el-icon><Link /></el-icon> {{ row.repo_url?.split('/').pop() }}
+              </el-link>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="创建时间" width="180" sortable />
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click.stop="goToTask(row)">
+                管理
               </el-button>
             </template>
           </el-table-column>
         </el-table>
+      </LoadingSpinner>
 
-        <!-- 空状态提示 -->
-        <el-empty v-if="!loading && tasks.length === 0" description="暂无任务，请新建一个测试任务" />
-      </div>
+      <!-- 空状态 -->
+      <el-empty
+        v-if="!taskStore.loading && taskStore.tasks.length === 0"
+        description="暂无测试任务，点击新建开始吧~"
+        :image-size="120"
+      >
+        <el-button type="primary" @click="showCreateDialog">新建任务</el-button>
+      </el-empty>
     </el-main>
 
     <!-- 新建任务对话框 -->
-    <el-dialog v-model="dialogVisible" title="新建测试任务" width="500px">
-      <el-form :model="newTask" label-width="100px">
-        <el-form-item label="任务名称" required>
-          <el-input v-model="newTask.name" placeholder="请输入任务名称" />
+    <el-dialog
+      v-model="dialogVisible"
+      title="新建测试任务"
+      width="500px"
+      :close-on-click-modal="false"
+      @closed="resetForm"
+    >
+      <el-form
+        ref="createFormRef"
+        :model="createForm"
+        :rules="createRules"
+        label-position="top"
+      >
+        <el-form-item label="任务名称" prop="name">
+          <el-input v-model="createForm.name" placeholder="请输入任务名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="仓库地址" required>
-          <el-input v-model="newTask.repo_url" placeholder="https://github.com/..." />
+        <el-form-item label="任务描述" prop="description">
+          <el-input
+            v-model="createForm.description"
+            type="textarea"
+            placeholder="请输入任务描述（可选）"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+          />
         </el-form-item>
-        <el-form-item label="分支" required>
-          <el-input v-model="newTask.branch" placeholder="main" />
-        </el-form-item>
-        <!-- 使用变量替代 import.meta.env -->
-        <el-form-item label="默认仓库">
+        <el-form-item label="代码仓库" prop="repo_url">
+          <el-input
+            v-model="createForm.repo_url"
+            placeholder="默认使用平台配置仓库"
+            :disabled="true"
+          />
           <el-text size="small" type="info">
             📦 {{ repoUrl }}
           </el-text>
@@ -82,169 +118,143 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="createTask" :loading="submitting">确定</el-button>
+        <el-button type="primary" @click="handleCreate" :loading="creating">
+          确 定
+        </el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, User } from '@element-plus/icons-vue'
-import api from '@/api'
+import { useTaskStore } from '@/stores/task'
+import {
+  Monitor, UserFilled, SwitchButton, Plus, Link
+} from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
-const authStore = useAuthStore()
+const auth = useAuthStore()
+const taskStore = useTaskStore()
 
-// 从环境变量获取仓库地址，避免在模板中直接使用 import.meta
-const repoUrl = import.meta.env.VITE_APP_REPO_URL || '未配置'
+// 【关键修复】获取环境变量，避免在模板中直接使用 import.meta.env
+const repoUrl = import.meta.env.VITE_APP_REPO_URL || '未配置仓库地址'
 
-const loading = ref(false)
-const submitting = ref(false)
-const tasks = ref([])
-const searchQuery = ref('')
 const dialogVisible = ref(false)
+const creating = ref(false)
+const createFormRef = ref()
 
-const newTask = ref({
+const createForm = reactive({
   name: '',
-  repo_url: '',
-  branch: 'main'
+  description: '',
+  repo_url: repoUrl
 })
 
-const filteredTasks = computed(() => {
-  if (!searchQuery.value) return tasks.value
-  return tasks.value.filter(task =>
-    task.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
-
-const fetchTasks = async () => {
-  loading.value = true
-  try {
-    const res = await api.getTasks()
-    tasks.value = res.data || []
-  } catch (error) {
-    ElMessage.error('获取任务列表失败')
-    console.error(error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const createTask = async () => {
-  if (!newTask.value.name || !newTask.value.repo_url) {
-    ElMessage.warning('请填写完整信息')
-    return
-  }
-  submitting.value = true
-  try {
-    await api.createTask(newTask.value)
-    ElMessage.success('任务创建成功')
-    dialogVisible.value = false
-    newTask.value = { name: '', repo_url: '', branch: 'main' }
-    fetchTasks()
-  } catch (error) {
-    ElMessage.error('创建任务失败')
-    console.error(error)
-  } finally {
-    submitting.value = false
-  }
-}
-
-const viewTask = (task) => {
-  router.push(`/task/${task.id}`)
-}
-
-const deleteTask = async (id) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该任务吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await api.deleteTask(id)
-    ElMessage.success('删除成功')
-    fetchTasks()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-      console.error(error)
-    }
-  }
-}
-
-const handleCommand = (command) => {
-  if (command === 'logout') {
-    authStore.logout()
-    router.push('/login')
-    ElMessage.success('已退出登录')
-  }
+const createRules = {
+  name: [
+    { required: true, message: '请输入任务名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '长度 2-50 位', trigger: 'blur' }
+  ]
 }
 
 onMounted(() => {
-  fetchTasks()
+  taskStore.fetchTasks()
 })
+
+const goToTask = (row) => {
+  router.push(`/task/${row.id}`)
+}
+
+const showCreateDialog = () => {
+  dialogVisible.value = true
+}
+
+const resetForm = () => {
+  createForm.name = ''
+  createForm.description = ''
+  createFormRef.value?.resetFields()
+}
+
+const handleCreate = async () => {
+  if (!createFormRef.value) return
+  try {
+    await createFormRef.value.validate()
+    creating.value = true
+    await taskStore.createTask(createForm)
+    dialogVisible.value = false
+    taskStore.fetchTasks()
+  } catch (error) {
+    console.error('Create task error:', error)
+  } finally {
+    creating.value = false
+  }
+}
 </script>
 
 <style scoped>
-.dashboard-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f5f7fa;
+.dashboard {
+  min-height: 100vh;
+  background: var(--bg-color);
 }
-
-.dashboard-header {
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  z-index: 10;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-
-.header-left h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
-}
-
-.header-right .user-info {
+.header-left {
   display: flex;
   align-items: center;
-  cursor: pointer;
+  gap: 10px;
+}
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+}
+.user-info {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
 }
-
-.username {
-  margin-left: 8px;
-  font-size: 14px;
-  color: #606266;
+.user-info:hover {
+  background: #f5f7fa;
 }
-
-.dashboard-main {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
+.main {
+  padding: 24px;
 }
-
-.content-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-}
-
-.action-bar {
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+.page-header h2 {
+  margin: 0;
+  color: #303133;
+  font-size: 20px;
+}
+.el-table {
+  cursor: pointer;
+}
+.el-table__row:hover {
+  background-color: #f5f7fa !important;
 }
 </style>
