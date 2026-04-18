@@ -22,12 +22,12 @@ export default defineConfig({
     }
   },
   server: {
-    host: '0.0.0.0',
+    host: '0.0.0.0',// 允许局域网访问
     port: 5173,
     open: true,
     proxy: {
       '/api': {
-        target: 'http://0.0.0.0:8000',
+        target: 'http://localhost:8000',// 后端接口地址
         changeOrigin: true,
         secure: false,
         // 如果后端接口没有 /api 前缀，取消下面注释

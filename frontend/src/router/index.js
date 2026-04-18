@@ -2,7 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const routes = [
-  { path: '/login', name: 'Login', component: () => import('@/views/Login.vue') },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue')
+  },
   {
     path: '/',
     name: 'Dashboard',
@@ -23,22 +27,21 @@ const routes = [
   }
 ]
 
-const router = createRouter({ history: createWebHistory(), routes })
-
-// 在路由守卫外部获取 store 实例，确保使用同一个单例
-const auth = useAuthStore()
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
 
 router.beforeEach((to, from, next) => {
-  // 如果路由需要认证且当前没有 token，则跳转到登录页
+  // 此时 Pinia 肯定已经初始化（因为 main.js 中 app.use(pinia) 在前）
+  // 直接调用即可，不会再报 "getActivePinia" 错误
+  const auth = useAuthStore()
+
   if (to.meta.requiresAuth && !auth.token) {
     next('/login')
-  }
-  // 如果已登录且访问的是登录页，则重定向到首页
-  else if (to.path === '/login' && auth.token) {
+  } else if (to.path === '/login' && auth.token) {
     next('/')
-  }
-  // 其他情况正常放行
-  else {
+  } else {
     next()
   }
 })

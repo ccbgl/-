@@ -10,10 +10,8 @@ import router from './router'
 const app = createApp(App)
 const pinia = createPinia()
 
-app.use(pinia)
-app.use(router)
+app.use(pinia)      // 1. 先挂载 Pinia
+app.use(router)     // 2. 再挂载 Router
 app.use(ElementPlus)
-
-// 注意：路由守卫已移至 router/index.js 中，避免重复定义和 store 实例冲突
 
 app.mount('#app')
