@@ -1,72 +1,65 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { api } from '@/api/request'
-import { ElMessage } from 'element-plus'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem('token') || null)
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
-
-  const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'admin')
-
-  // 登录
-  const login = async (username, password) => {
+  // 安全地获取本地存储中的数据
+  const getStoredToken = () => {
     try {
-      const res = await api.post('/auth/login', { username, password })
-      token.value = res.token
-      user.value = res.user
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(res.user))
-      ElMessage.success('登录成功')
-      return true
-    } catch (error) {
-      ElMessage.error(error.message || '登录失败')
-      return false
+      const tokenStr = localStorage.getItem('token')
+      return tokenStr ? JSON.parse(tokenStr) : null
+    } catch (e) {
+      console.error('Failed to parse token from localStorage:', e)
+      localStorage.removeItem('token') // 清除损坏的数据
+      return null
     }
   }
 
-  // 注册（仅admin可创建普通用户）
-  const register = async (username, password) => {
+  const getStoredUser = () => {
     try {
-      const res = await api.post('/auth/register', { username, password, role: 'user' })
-      ElMessage.success('用户创建成功')
-      return res
-    } catch (error) {
-      ElMessage.error(error.message || '创建失败')
-      throw error
+      const userStr = localStorage.getItem('user')
+      return userStr ? JSON.parse(userStr) : null
+    } catch (e) {
+      console.error('Failed to parse user from localStorage:', e)
+      localStorage.removeItem('user') // 清除损坏的数据
+      return null
     }
   }
 
-  // 退出
-  const logout = () => {
+  const token = ref(getStoredToken())
+  const user = ref(getStoredUser())
+
+  const isLoggedIn = computed(() => !!token.value)
+
+  function login(newToken, newUser) {
+    token.value = newToken
+    user.value = newUser
+
+    // 安全地存储到本地
+    try {
+      localStorage.setItem('token', JSON.stringify(newToken))
+      localStorage.setItem('user', JSON.stringify(newUser))
+    } catch (e) {
+      console.error('Failed to save auth data to localStorage:', e)
+    }
+  }
+
+  function logout() {
     token.value = null
     user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    ElMessage.info('已退出登录')
-  }
 
-  // 刷新用户信息
-  const refreshUser = async () => {
-    if (!token.value) return
     try {
-      const res = await api.get('/auth/me')
-      user.value = res
-      localStorage.setItem('user', JSON.stringify(res))
-    } catch (error) {
-      logout()
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+    } catch (e) {
+      console.error('Failed to clear auth data from localStorage:', e)
     }
   }
 
   return {
     token,
     user,
-    isAuthenticated,
-    isAdmin,
+    isLoggedIn,
     login,
-    register,
-    logout,
-    refreshUser
+    logout
   }
 })

@@ -16,7 +16,7 @@
         </template>
         <el-descriptions :column="3" border size="small">
           <el-descriptions-item label="类型">{{ getTypeText(plan?.plan_type) }}</el-descriptions-item>
-          <el-descriptions-item label="Cron表达式">{{ plan?.cron_expr || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="Cron 表达式">{{ plan?.cron_expr || '-' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ plan?.created_at || '-' }}</el-descriptions-item>
         </el-descriptions>
       </el-card>
@@ -73,7 +73,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column prop="id" label="记录ID" width="90" />
+            <el-table-column prop="id" label="记录 ID" width="90" />
             <el-table-column prop="start_time" label="开始时间" width="180" sortable />
 
             <el-table-column label="状态" width="120" align="center">
@@ -149,7 +149,7 @@ const running = ref(false)
 const runType = ref(null)
 
 onMounted(async () => {
-  await taskStore.fetchPlans() // 获取所有计划用于查找当前计划
+  await taskStore.fetchPlans()
   plan.value = taskStore.plans.find(p => p.id == planId.value)
   if (!plan.value) {
     ElMessage.error('计划不存在')
@@ -157,8 +157,6 @@ onMounted(async () => {
     return
   }
   await fetchExecutions()
-
-  // 定时刷新执行状态（仅当有运行中的任务时）
   startAutoRefresh()
 })
 
@@ -174,7 +172,7 @@ const startAutoRefresh = () => {
     } else {
       clearInterval(interval)
     }
-  }, 10000) // 每10秒刷新一次
+  }, 10000)
 }
 
 const getTypeText = (type) => {
@@ -204,7 +202,6 @@ const refreshExecutions = async () => {
 }
 
 const openReport = (url) => {
-  // 实际应为后端返回的完整报告地址
   const reportUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`
   window.open(reportUrl, '_blank')
 }

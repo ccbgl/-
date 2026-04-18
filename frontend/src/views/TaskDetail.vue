@@ -43,7 +43,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="cron_expr" label="Cron表达式" width="150" show-overflow-tooltip />
+            <el-table-column prop="cron_expr" label="Cron 表达式" width="150" show-overflow-tooltip />
             <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
                 <el-switch
@@ -120,15 +120,15 @@
         </el-form-item>
         <el-form-item
           v-if="planForm.plan_type === 'scheduled'"
-          label="Cron表达式"
+          label="Cron 表达式"
           prop="cron_expr"
         >
           <el-input
             v-model="planForm.cron_expr"
-            placeholder="例如: 0 0 2 * * ? (每天2点执行)"
+            placeholder="例如：0 0 2 * * ? (每天 2 点执行)"
           />
           <el-text size="small" type="info">
-            💡 格式: 秒 分 时 日 月 周
+            💡 格式：秒 分 时 日 月 周
           </el-text>
         </el-form-item>
       </el-form>
@@ -171,16 +171,16 @@ const planForm = reactive({
 const planRules = {
   name: [
     { required: true, message: '请输入计划名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度2-50位', trigger: 'blur' }
+    { min: 2, max: 50, message: '长度 2-50 位', trigger: 'blur' }
   ],
   cron_expr: [
     {
       required: true,
-      message: '请输入Cron表达式',
+      message: '请输入 Cron 表达式',
       trigger: 'blur',
       validator: (rule, value, callback) => {
         if (planForm.plan_type === 'scheduled' && !value) {
-          callback(new Error('定时任务必须填写Cron表达式'))
+          callback(new Error('定时任务必须填写 Cron 表达式'))
         } else {
           callback()
         }
@@ -236,10 +236,9 @@ const handleCreatePlan = async () => {
 
 const handleStatusChange = async (plan) => {
   try {
-    // 实际应调用后端API更新状态
     ElMessage.success(`计划 "${plan.name}" 已${plan.status === 'active' ? '启用' : '禁用'}`)
   } catch (error) {
-    plan.status = plan.status === 'active' ? 'inactive' : 'active' // 回滚
+    plan.status = plan.status === 'active' ? 'inactive' : 'active'
     ElMessage.error('状态更新失败')
   }
 }
@@ -249,7 +248,6 @@ const runPlan = async (plan, type) => {
   runningType.value = type
   try {
     await taskStore.runPlan(plan.id, type)
-    // 执行后跳转到监控页
     router.push(`/plan/${plan.id}`)
   } catch (error) {
     console.error('Run plan error:', error)
