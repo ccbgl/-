@@ -27,7 +27,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://0.0.0.0:8000',
         changeOrigin: true,
         secure: false,
         // 如果后端接口没有 /api 前缀，取消下面注释
