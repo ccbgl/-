@@ -1,0 +1,11 @@
+```
+# Dependencies
+node_modules/
+
+# Build artifacts
+frontend/dist/
+
+# Logs
+*.log
+
+```

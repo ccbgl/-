@@ -112,7 +112,7 @@
             :disabled="true"
           />
           <el-text size="small" type="info">
-            📦 {{ import.meta.env.VITE_APP_REPO_URL }}
+            📦 {{ repoUrl }}
           </el-text>
         </el-form-item>
       </el-form>
@@ -141,6 +141,9 @@ const router = useRouter()
 const auth = useAuthStore()
 const taskStore = useTaskStore()
 
+// 获取环境变量，避免在模板中直接使用 import.meta.env
+const repoUrl = import.meta.env.VITE_APP_REPO_URL || '未配置仓库地址'
+
 const dialogVisible = ref(false)
 const creating = ref(false)
 const createFormRef = ref()
@@ -148,7 +151,7 @@ const createFormRef = ref()
 const createForm = reactive({
   name: '',
   description: '',
-  repo_url: import.meta.env.VITE_APP_REPO_URL
+  repo_url: repoUrl
 })
 
 const createRules = {

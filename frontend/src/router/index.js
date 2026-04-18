@@ -25,10 +25,15 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes })
 
+// 在路由守卫外部获取 store 实例，避免重复创建
+const auth = useAuthStore()
+
 router.beforeEach((to, from, next) => {
-  const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.token) next('/login')
-  else next()
+  if (to.meta.requiresAuth && !auth.token) {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router
